@@ -19,14 +19,14 @@ let stowage = [];
 let errors = [];
 let solves = [];
 
-let logicSize = {w: 12, h: 12, z: 1};
+let logicSize = {w: 12, h: 12, z: 2};
 let rectSize = 30;
-let offset = {x: 10, y: 10};
+let offset = {x: 100, y: 10};
 offset.dy = (logicSize.h + 1) * rectSize;
 let textOffset = {x: 10, y: 21};
 let size = {
-  w: (logicSize.w+1) * rectSize, 
-  h: logicSize.z * offset.dy
+  w: (logicSize.w+1) * rectSize + offset.x - 10, 
+  h: logicSize.z    * offset.dy + offset.y - 10
 };
 let n = 0, maxPreSolveIterations = 0, 
   maxSetOfChangesLength = 0;
