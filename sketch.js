@@ -11,6 +11,9 @@
 //     [+] добавить понятие суммы
 //     [ ] добавить булевы формулы
 //     [ ] добавить рекурсивные формулы 
+// [ ] максимально плотное объединение(union) недезинтегрированных решений (т.е. все остальные кроме дубликатов)
+// (позволяет убрать симметричные решения, чтобы в множестве решений не было дубликатов и union был более информативным для человека)
+// решение: unionA отображается в минимальный unionB, состоящий из решений не приводимых друг к другу симметриями, которые переводят в себя unionA
 // изучить монотонные фунции и найти остальные миры кроме линейных
 // изучить построение электронных схем
 // обдумать модель "игру" социального взаимодействия нейронов
@@ -19,7 +22,15 @@ let stowage = [];
 let errors = [];
 let solves = [];
 
-let logicSize = {w: 12, h: 12, z: 2};
+let BG_COLOR =     [150, 150, 150] // [100, 100, 100]
+let GRID_COLOR =   [ 60,  60,  60] // [0, 0, 0]
+let POINTS_COLOR = [255,   0, 255]
+let ZERO_COLOR =   [  0,   0,   0] // [255, 255, 255]
+let ONE_COLOR =    [255, 255,   0] // [0, 125, 125]
+let ERROR_COLOR =  [255,   0,   0]
+let TEXT_COLOR =   [  0,   0,   0] // [0, 0, 0]
+
+let logicSize = {w: 12, h: 12, z: 1};
 let rectSize = 30;
 let offset = {x: 100, y: 10};
 offset.dy = (logicSize.h + 1) * rectSize;
@@ -330,13 +341,13 @@ function putToStowage(i, j, k) {
 }
  // исправлено
 function draw() {
-  background(225);
-  stroke(0, 0, 0)
-  drawBackground(offset.x, offset.y, offset.dy, logic);
+  background(BG_COLOR)
+  stroke(GRID_COLOR)
+  drawBackground(offset.x, offset.y, offset.dy, logic)
   for(let z = 0; z < logicSize.z; z++) {
-    drawGrid(offset.x, offset.y + offset.dy * z, logicSize.w, logicSize.h, rectSize);
+    drawGrid(offset.x, offset.y + offset.dy * z, logicSize.w, logicSize.h, rectSize)
   }
-  drawText(offset.x + textOffset.x, offset.y + textOffset.y, logic);
+  drawText(offset.x + textOffset.x, offset.y + textOffset.y, logic)
   for(let i = 0; i < defaultStowage.length; i++) {
     let point = defaultStowage[i]
     drawPoint(point)
@@ -346,7 +357,7 @@ function draw() {
 function drawPoint(point) {
   noFill()
   strokeWeight(3)
-  stroke(255, 0, 255)
+  stroke(POINTS_COLOR)
   rect(
     offset.x + rectSize * point[0], 
     offset.y + rectSize * point[1] + offset.dy * point[2],
@@ -709,7 +720,7 @@ function drawGrid(x, y, xSize, ySize, rectSize) {
 
 function drawText(dx, dy, arr) {
   noStroke()
-  fill(0, 0, 0);
+  fill(TEXT_COLOR);
   for(let i = 0; i < arr.length; i++)
     for(let j = 0; j < arr[i].length; j++)
       for(let k = 0; k < arr[i][j].length; k++) {
@@ -724,15 +735,15 @@ function drawBackground(dx, dy, offsetDY, arr) {
       for(let k = 0; k < arr[i][j].length; k++) {
         let cell = arr[i][j][k];
         if(cell == 0) {
-          fill(255, 255, 255);
+          fill(ZERO_COLOR);
         } else if(cell == 1) {
-          fill(0, 125, 125);
+          fill(ONE_COLOR);
         }
         if(cell < 2)
           rect(dx + rectSize * i, dy + rectSize * j + offsetDY * k, rectSize, rectSize);
       }
   // и эта часть тоже исправлена
-  fill(255, 0, 0);
+  fill(ERROR_COLOR);
   for(let i = 0; i < errors.length; i++) {
     let ei = errors[i].i, ej = errors[i].j, ek =  errors[i].k;
     rect(dx + rectSize * ei, dy + rectSize * ej + offsetDY * ek, rectSize, rectSize);
