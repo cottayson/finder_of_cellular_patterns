@@ -26,11 +26,11 @@ let BG_COLOR =     [150, 150, 150] // [100, 100, 100]
 let GRID_COLOR =   [ 60,  60,  60] // [0, 0, 0]
 let POINTS_COLOR = [255,   0, 255]
 let ZERO_COLOR =   [  0,   0,   0] // [255, 255, 255]
-let ONE_COLOR =    [255, 255,   0] // [0, 125, 125]
+let ONE_COLOR =    [225, 225,   0] // [0, 125, 125]
 let ERROR_COLOR =  [255,   0,   0]
 let TEXT_COLOR =   [  0,   0,   0] // [0, 0, 0]
 
-let logicSize = {w: 12, h: 12, z: 1};
+let logicSize = {w: 12, h: 12, z: 2};
 let rectSize = 30;
 let offset = {x: 100, y: 10};
 offset.dy = (logicSize.h + 1) * rectSize;
