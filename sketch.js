@@ -326,15 +326,18 @@ function setZeroBorders() {
   }
 }
 
+function initialization() {
+  logic = init3DArray(logicSize.w, logicSize.h, logicSize.z, 2);
+  if(zeroBorders) {
+    setZeroBorders()
+  }
+}
+
 function setup() {
   createCanvas(size.w, size.h);
   noLoop();
   textFont("consolas", 20);
-  logic = init3DArray(logicSize.w, logicSize.h, logicSize.z, 2);
-  // zero borders
-  if(zeroBorders) {
-    setZeroBorders()
-  }
+  initialization()
   
   // logic[1][1][0] = 1; logic[2][1][0] = 1;
   // logic[1][2][0] = 1; logic[2][2][0] = 0;
@@ -344,7 +347,6 @@ function setup() {
     
   //globalSolve()
   //loadToArray(logic, load, 1, 1);
-
 }
 
 function functionalSymmetry(i, j, k) {
