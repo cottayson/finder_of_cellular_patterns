@@ -32,7 +32,7 @@ let TEXT_COLOR =   [  0,   0,   0] // [0, 0, 0]
 
 let logicSize = {w: 12, h: 12, z: 2};
 let rectSize = 30;
-let offset = {x: 100, y: 10};
+let offset = {x: 50, y: 10};
 offset.dy = (logicSize.h + 1) * rectSize;
 let textOffset = {x: 10, y: 21};
 let size = {
@@ -56,9 +56,6 @@ let unionAutoEnable = false
 let autoPlace = false
 let functionalSymmetryEnable = false
 let zeroBorders = true
-let sumTestEnable = false
-let target = 15
-let dt = 0
 
 let defaultStowage = []
 
@@ -109,16 +106,142 @@ function applyUnion() {
   return false
 }
 
-function test(arr) {
-  if(sumTestEnable == false) {
+const tests = {
+  sumTest: {
+    enabled: false,
+    target: 0,
+    dt: 0,
+  },
+  kernelSumTest: {
+    enabled: true,
+    target: 1,
+    dt: Infinity,
+  },
+  stableTest: {
+    enabled: true,
+    listOfPoints: [],
+  },
+  callbackList: [sumTestCallback, kernelTestCallback, stableTestCallback],
+}
+
+tests.stableTest.listOfPoints.add = function(x, y) {
+  if(x === undefined || y === undefined) throw "input must be two arguments (x, y)"
+  let list = tests.stableTest.listOfPoints
+  
+  for(let i = list.length - 1; i >= 0; i--) {
+    if(list[i].x === x && list[i].y === y) {
+      list.splice(i, 1)
+      return false
+    }
+  }
+  // otherwise
+  list.push({x, y})
+  return true
+}
+
+tests.stableTest.listOfPoints.remove = function(x, y) {
+  if(x === undefined || y === undefined) throw "input must be two arguments (x, y)"
+  let list = tests.stableTest.listOfPoints
+  for(let i = list.length - 1; i >= 0; i--) {
+    if(list[i].x === x && list[i].y === y) {
+      list.splice(i, 1)
+    }
+  }
+  return tests.stableTest.listOfPoints
+}
+
+tests.stableTest.listOfPoints.clear = function() {
+  let list = tests.stableTest.listOfPoints
+  list.splice(0, list.length)
+  return tests.stableTest.listOfPoints
+}
+
+function stableTestCallback(arr) {
+  if(logicSize.z < 2) {
+    throw "logicSize.z < 2 => stableTest should not be used"
     return true
   }
-  const targetsum = {min: target, max: target + dt}
+  // use .bind to reduce args length to one when test launched
+  // or make global testOptions object
+  const testOptions = tests.stableTest
+  //-------------------------------------------------------------------------------------
+  if(testOptions.enabled === false) {
+    return true
+  }
+  //-------------------------------------------------------------------------------------
+  let listOfPoints = testOptions.listOfPoints
+  for(let i = 0; i < listOfPoints.length; i++) {
+    let point = listOfPoints[i]
+    let firstCell = arr[point.x][point.y][0]
+    if(firstCell === 2) {
+      continue
+    }
+    // firstCell < 2
+    for(let k = 1; k < logicSize.z; k++) {
+      let otherCell = arr[point.x][point.y][k]
+      if(otherCell === 2) {
+        continue
+      }
+      // otherCell < 2 AND firstCell < 2
+      if(otherCell !== firstCell) {
+        // not stable column of cells
+        return false
+      }
+    }
+  }
+  return true
+}
+
+function kernelTestCallback(arr) {
+  if(logicSize.z < 2) {
+    throw "logicSize.z < 2 => kernelTest should not be used"
+    return true
+  }
+  
+  const testOptions = tests.kernelSumTest
+  //-------------------------------------------------------------------------------------
+  if(testOptions.enabled === false) {
+    return true
+  }
+  const targetsum = {min: testOptions.target, max: testOptions.target + testOptions.dt}
+  //-------------------------------------------------------------------------------------
+
+  let total = {min: 0, max: 0}
+  for(let j = 0; j < logicSize.h; j++) {
+    for(let i = 0; i < logicSize.w; i++) {
+      let firstCell = arr[i][j][0]
+      let secondCell = arr[i][j][1]
+      if(firstCell === 2 || secondCell === 2) {
+        total.max += 1
+      } else if(firstCell !== secondCell) {
+        total.min += 1
+        total.max += 1
+      }
+    }
+  }
+  
+  // [targetsum.min targetsum.max] < [total.min total.max]
+  // [total.min total.max] < [targetsum.min targetsum.max]
+  
+  if( total.min > targetsum.max || total.max < targetsum.min ) {
+    return false
+  }
+  return true
+}
+
+function sumTestCallback(arr) {
+  const testOptions = tests.sumTest
+  //-------------------------------------------------------------------------------------
+  if(testOptions.enabled === false) {
+    return true
+  }
+  const targetsum = {min: testOptions.target, max: testOptions.target + testOptions.dt}
+  //-------------------------------------------------------------------------------------
   let total = {min: 0, max: 0}
   for(let j = 0; j < logicSize.h; j++) {
     for(let i = 0; i < logicSize.w; i++) {
       let cell = arr[i][j][0]
-      if(cell == 2) {
+      if(cell === 2) {
         total.max += 1
       } else {
         total.min += cell
@@ -233,15 +356,22 @@ function functionalSymmetry(i, j, k) {
 }
 
 let shiftPressed = false
+let controlPressed = false
 function keyReleased() {
   if(keyCode == SHIFT) {
     shiftPressed = false
+  }
+  if(keyCode == CONTROL) {
+    controlPressed = false
   }
 }
 
 function keyPressed() {
   if(keyCode == SHIFT) {
     shiftPressed = true
+  }
+  if(keyCode == CONTROL) {
+    controlPressed = true
   }
   if(keyCode == 85) { // u
     if(applyUnion()) {
@@ -280,13 +410,24 @@ function mousePressed() {
     if(shiftPressed) {
       if(mouseButton == LEFT) {
         if(addToStowage(defaultStowage, [i, j, k])) {
-          console.log('добавлена точка',[i, j, k])
+          console.log('added point to defaultStowage',[i, j, k])
         } else {
-          console.log('удалили точку',[i, j, k])
+          console.log('removed point from defaultStowage',[i, j, k])
         }
       } else if(mouseButton == RIGHT) {
         defaultStowage = []
-        console.log('defaultStowage очищено')
+        console.log('defaultStowage cleared')
+      }
+    } else if(controlPressed) {
+      if(mouseButton == LEFT) {
+        if( tests.stableTest.listOfPoints.add(i, j) ) {
+          console.log('added point to StableTest', [i, j])
+        } else {
+          console.log('removed point from StableTest', [i, j])
+        }
+      } else if(mouseButton == RIGHT) {
+        tests.stableTest.listOfPoints.clear()
+        console.log('StableTest list cleared')
       }
     } else {
       let value;
@@ -322,7 +463,7 @@ function addToStowage(stow, point) {
     let pointInStow = stow[i]
     let equal = true
     for(let j = 0; j < 3; j++) {
-      equal = equal && (pointInStow[j] == point[j])
+      equal = equal && (pointInStow[j] === point[j])
     }
     if(equal == true) { // если такая уже есть
       stow.splice(i, 1) // удаляем
@@ -350,20 +491,36 @@ function draw() {
   drawText(offset.x + textOffset.x, offset.y + textOffset.y, logic)
   for(let i = 0; i < defaultStowage.length; i++) {
     let point = defaultStowage[i]
-    drawPoint(point)
+    drawPoint(point[0], point[1], point[2], POINTS_COLOR)
+  }
+  for(let i = 0; i < tests.stableTest.listOfPoints.length; i++) {
+    let point = tests.stableTest.listOfPoints[i]
+    for(let z = 0; z < logicSize.z; z++) {
+      drawPoint(point.x, point.y, z, [0, 255, 0], 'S')
+    }
   }
 }
 
-function drawPoint(point) {
-  noFill()
-  strokeWeight(3)
-  stroke(POINTS_COLOR)
-  rect(
-    offset.x + rectSize * point[0], 
-    offset.y + rectSize * point[1] + offset.dy * point[2],
-    rectSize, rectSize
-  );
-  strokeWeight(1)
+function drawPoint(x, y, z, color, character) {
+  if(character === undefined) {
+    noFill()
+    strokeWeight(3)
+    stroke(color)
+    rect(
+      offset.x + rectSize * x, 
+      offset.y + rectSize * y + offset.dy * z,
+      rectSize, rectSize
+    )
+    strokeWeight(1)
+  } else {
+    noStroke()
+    fill(color)
+    text(
+      character,
+      textOffset.x + offset.x + rectSize * x,
+      textOffset.y + offset.y + rectSize * (y+0.0) + offset.dy * z
+    )
+  }
 }
 //**********************************************************************************
  // исправлено
@@ -415,9 +572,13 @@ if(changes) {
  // работает
 function isError(arr, changedPos) {
    // эту часть осталось исправить
-  if(test(arr) == false) {
-    return true
+  for(let i = 0; i < tests.callbackList.length; i++) {
+    let testCallback = tests.callbackList[i]
+    if(testCallback(arr) == false) {
+      return true
+    }
   }
+
   if(changedPos != null) {
     let x = changedPos.i;
     let y = changedPos.j;
