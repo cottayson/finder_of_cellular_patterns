@@ -18,7 +18,9 @@
 // изучить построение электронных схем
 // обдумать модель "игру" социального взаимодействия нейронов
 let logic = [];
+let globalUnionArray = []
 let stowage = [];
+let defaultStowage = []
 let errors = [];
 let solves = [];
 
@@ -29,6 +31,7 @@ let ZERO_COLOR =   [  0,   0,   0] // [255, 255, 255]
 let ONE_COLOR =    [225, 225,   0] // [0, 125, 125]
 let ERROR_COLOR =  [255,   0,   0]
 let TEXT_COLOR =   [  0,   0,   0] // [0, 0, 0]
+let STABLE_COLOR = [  0, 255,   0] // [0, 0, 0]
 
 let logicSize = {w: 12, h: 12, z: 2};
 let rectSize = 30;
@@ -39,8 +42,11 @@ let size = {
   w: (logicSize.w+1) * rectSize + offset.x - 10, 
   h: logicSize.z    * offset.dy + offset.y - 10
 };
+// counts {
 let n = 0, maxPreSolveIterations = 0, 
-  maxSetOfChangesLength = 0;
+  maxSetOfChangesLength = 0, 
+  solutionsCount = 0;
+// counts }
 let listOfSymbols = [' ', 'o', '*', 'E']
 let lengthOfLogicSet = 2;
 let defaultPavement = 0; // lengthOfLogicSet <=> *
@@ -56,8 +62,6 @@ let unionAutoEnable = false
 let autoPlace = false
 let functionalSymmetryEnable = false
 let zeroBorders = true
-
-let defaultStowage = []
 
 function put(i, j) {
   for(let kk = 0; kk < logicSize.z; kk++) {
@@ -93,17 +97,6 @@ function makeLinearStowage() {
       }
     }
   }
-}
-
-function applyUnion() {
-  const foundedAllSolutions = n < maxBranches
-  let unionArray = union(solves)
-  // print3dSolve(unionArray)
-  if(solves.length > 0 && foundedAllSolutions) {
-    logic = unionArray
-    return true
-  }
-  return false
 }
 
 const tests = {
@@ -256,6 +249,8 @@ function sumTestCallback(arr) {
 }
 
 function globalSolve() {
+  // initialize union array with empty sets "E"
+  globalUnionArray = init3DArray(logicSize.w, logicSize.h, logicSize.z, 3)
   let arr = copy3dArray(logic);
   stowage = []
   for(let u = 0; u < defaultStowage.length; u++) {
@@ -271,24 +266,25 @@ function globalSolve() {
   solves = []
   n = 0; maxPreSolveIterations = 0;
   maxSetOfChangesLength = 0;
+  solutionsCount = 0
   // global variables
-  console.log("solves: ")
+  console.log("solutions: ")
   let sip = 0, changedPos = null
-  console.time('solve')
+  console.time('solve time')
   solve(arr, sip, changedPos)
-  console.timeEnd('solve')
+  console.timeEnd('solve time')
   const foundedAllSolutions = n < maxBranches
   if(unionAutoEnable) {
     applyUnion()
   } else {
     console.log('union: ')
-    print3dSolve(union(solves))
+    print3dSolve(globalUnionArray /*union(solves)*/)
   }
   // no recursion
   if(foundedAllSolutions)
-    console.log("find all " + solves.length + " solves.");
+    console.log("all " + solutionsCount /*solves.length*/ + " solutions found.");
   else
-    console.log("solves = " + solves.length);
+    console.log("solutions = " + solutionsCount /*solves.length*/);
   console.log("branches = " + n);
   if(preSolveEnable) {
     console.log("maxPreSolveIterations = " + maxPreSolveIterations);
@@ -297,6 +293,26 @@ function globalSolve() {
 }
 
 //**********************************************************************************
+function unionTo(solution, unionArray) {
+  for(let i = 0; i < logicSize.w; i++)
+    for(let j = 0; j < logicSize.h; j++)
+      for(let k = 0; k < logicSize.z; k++) {
+        let cell = solution[i][j][k]
+        let unionCell = unionArray[i][j][k]
+        unionArray[i][j][k] = logicUnion(unionCell, cell)
+      }
+}
+
+function applyUnion() {
+  const foundedAllSolutions = n < maxBranches
+  // print3dSolve(unionArray)
+  if(solutionsCount > 0 && foundedAllSolutions) {
+    logic = copy3dArray(globalUnionArray)
+    return true
+  }
+  return false
+}
+
 function union(solutions) {
   let unionArray = init3DArray(logicSize.w, logicSize.h, logicSize.z, 3);
   for(let index = 0; index < solutions.length; index++) {
@@ -379,7 +395,7 @@ function keyPressed() {
     if(applyUnion()) {
       console.log('union applied')
     } else {
-      console.log('not all solves founded or solves.length = 0')
+      console.log('not all solutions found or solutionsCount = 0')
     }
   }
   if(keyCode == 187) { // "="
@@ -498,7 +514,7 @@ function draw() {
   for(let i = 0; i < tests.stableTest.listOfPoints.length; i++) {
     let point = tests.stableTest.listOfPoints[i]
     for(let z = 0; z < logicSize.z; z++) {
-      drawPoint(point.x, point.y, z, [0, 255, 0], 'S')
+      drawPoint(point.x, point.y, z, STABLE_COLOR, 'S')
     }
   }
 }
@@ -573,7 +589,7 @@ if(changes) {
 }
  // работает
 function isError(arr, changedPos) {
-   // эту часть осталось исправить
+  // launch test callbacks
   for(let i = 0; i < tests.callbackList.length; i++) {
     let testCallback = tests.callbackList[i]
     if(testCallback(arr) == false) {
@@ -685,9 +701,12 @@ function solve(arr, sip, changedPos, setOfChanges = []) {
   // some stuff
   if(sip >= stowage.length) {
     // add successful branch to solves
-    solves.push( copy3dArray(arr) )
-    if(solves.length <= maxPrint && isRandomFiltering()) {
-      print3dSolve(arr, solves.length)
+    // solves.push( copy3dArray(arr) ) // THIS CODE LINE TAKES UP A LOT OF MEMORY
+    unionTo(arr, globalUnionArray)
+    solutionsCount++
+    
+    if(solutionsCount <= maxPrint && isRandomFiltering()) {
+      print3dSolve(arr, solutionsCount)
     }
     return;
   }
