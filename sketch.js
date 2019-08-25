@@ -362,6 +362,7 @@ function resizeLogicTo(w, h, z, _zeroBorders = false) {
 }
 
 function initialization(_zeroBorders = false) {
+  offset.dy = (logicSize.h + 1) * rectSize
   let size = {
     w: (logicSize.w+1) * rectSize + offset.x - 10, 
     h: logicSize.z    * offset.dy + offset.y - 10
