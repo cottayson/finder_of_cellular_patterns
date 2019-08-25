@@ -38,10 +38,6 @@ let rectSize = 30;
 let offset = {x: 50, y: 10};
 offset.dy = (logicSize.h + 1) * rectSize;
 let textOffset = {x: 10, y: 21};
-let size = {
-  w: (logicSize.w+1) * rectSize + offset.x - 10, 
-  h: logicSize.z    * offset.dy + offset.y - 10
-};
 // counts {
 let n = 0, maxPreSolveIterations = 0, 
   maxSetOfChangesLength = 0, 
@@ -106,7 +102,7 @@ const tests = {
     dt: 0,
   },
   kernelSumTest: {
-    enabled: true,
+    enabled: false,
     target: 1,
     dt: Infinity,
   },
@@ -150,15 +146,16 @@ tests.stableTest.listOfPoints.clear = function() {
 }
 
 function stableTestCallback(arr) {
-  if(logicSize.z < 2) {
-    throw "logicSize.z < 2 => stableTest should not be used"
-    return true
-  }
   // use .bind to reduce args length to one when test launched
   // or make global testOptions object
   const testOptions = tests.stableTest
   //-------------------------------------------------------------------------------------
   if(testOptions.enabled === false) {
+    return true
+  }
+  
+  if(logicSize.z < 2) {
+    // throw "logicSize.z < 2 => stableTest should not be used"
     return true
   }
   //-------------------------------------------------------------------------------------
@@ -186,14 +183,14 @@ function stableTestCallback(arr) {
 }
 
 function kernelTestCallback(arr) {
-  if(logicSize.z < 2) {
-    throw "logicSize.z < 2 => kernelTest should not be used"
-    return true
-  }
-  
   const testOptions = tests.kernelSumTest
   //-------------------------------------------------------------------------------------
   if(testOptions.enabled === false) {
+    return true
+  }
+  
+  if(logicSize.z < 2) {
+    // throw "logicSize.z < 2 => kernelTest should not be used"
     return true
   }
   const targetsum = {min: testOptions.target, max: testOptions.target + testOptions.dt}
@@ -342,18 +339,46 @@ function setZeroBorders() {
   }
 }
 
-function initialization() {
+function changeLogicSizeBy(dw, dh, dz, _zeroBorders = false) {
+  resizeLogicTo(logicSize.w + dw, logicSize.h + dh, logicSize.z + dz, _zeroBorders)
+}
+
+function resizeLogicTo(w, h, z, _zeroBorders = false) {
+  let minSize = { 
+    w: Math.min(logicSize.w, w), 
+    h: Math.min(logicSize.h, h),
+    z: Math.min(logicSize.z, z),
+  }
+  let temp = copy3dArray(logic)
+  logicSize = {w, h, z}
+  initialization(_zeroBorders)
+  // fill current logic array with values
+  for(let i = 0; i < minSize.w; i++)
+    for(let j = 0; j < minSize.h; j++)
+      for(let k = 0; k < minSize.z; k++)
+        logic[i][j][k] = temp[i][j][k]
+      
+  draw() // what if call draw() 1000000 times? you can replace it by setting draw flag (needRedrawInThisTick) and add draw function in timer
+}
+
+function initialization(_zeroBorders = false) {
+  let size = {
+    w: (logicSize.w+1) * rectSize + offset.x - 10, 
+    h: logicSize.z    * offset.dy + offset.y - 10
+  }
+  resizeCanvas(size.w, size.h)
   logic = init3DArray(logicSize.w, logicSize.h, logicSize.z, 2);
-  if(zeroBorders) {
+  if(_zeroBorders) {
     setZeroBorders()
   }
+  draw()
 }
 
 function setup() {
-  createCanvas(size.w, size.h);
+  createCanvas(0, 0)
   noLoop();
   textFont("consolas", 20);
-  initialization()
+  initialization(zeroBorders)
   
   // logic[1][1][0] = 1; logic[2][1][0] = 1;
   // logic[1][2][0] = 1; logic[2][2][0] = 0;
