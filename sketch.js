@@ -231,12 +231,14 @@ function sumTestCallback(arr) {
   let total = {min: 0, max: 0}
   for(let j = 0; j < logicSize.h; j++) {
     for(let i = 0; i < logicSize.w; i++) {
-      let cell = arr[i][j][0]
-      if(cell === 2) {
-        total.max += 1
-      } else {
-        total.min += cell
-        total.max += cell
+      for(let k = 0; k < logicSize.z; k++) {
+        let cell = arr[i][j][k]
+        if(cell === 2) {
+          total.max += 1
+        } else {
+          total.min += cell
+          total.max += cell
+        }
       }
     }
   }
