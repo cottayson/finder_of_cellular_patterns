@@ -53,11 +53,12 @@ let maxBranches = 150000
 let debugStep = 50000
 let preSolveEnable = true
 let errorUpgrade = true
-// let enableAutoPlacing = true;
+
 let unionAutoEnable = false
 let autoPlace = false
 let functionalSymmetryEnable = false
 let zeroBorders = true
+let zLoopBack = true
 
 function put(i, j) {
   for(let kk = 0; kk < logicSize.z; kk++) {
@@ -381,14 +382,11 @@ function setup() {
   textFont("consolas", 20);
   initialization(zeroBorders)
   
-  // logic[1][1][0] = 1; logic[2][1][0] = 1;
-  // logic[1][2][0] = 1; logic[2][2][0] = 0;
-  
-  // logic[4][1][0] = 1; logic[5][1][0] = 1;
-  // logic[4][2][0] = 0; logic[5][2][0] = 1;
-    
-  //globalSolve()
-  //loadToArray(logic, load, 1, 1);
+  // logic[1][1][0] = 0; logic[2][1][0] = 0; logic[3][1][0] = 0; logic[4][1][0] = 0; logic[5][1][0] = 0;
+  // logic[1][2][0] = 0; logic[2][2][0] = 0; logic[3][2][0] = 0; logic[4][2][0] = 0; logic[5][2][0] = 0;
+  // logic[1][3][0] = 0; logic[2][3][0] = 1; logic[3][3][0] = 1; logic[4][3][0] = 1; logic[5][3][0] = 0;
+  // logic[1][4][0] = 0; logic[2][4][0] = 0; logic[3][4][0] = 0; logic[4][4][0] = 0; logic[5][4][0] = 0;
+  // logic[1][5][0] = 0; logic[2][5][0] = 0; logic[3][5][0] = 0; logic[4][5][0] = 0; logic[5][5][0] = 0;
 }
 
 function functionalSymmetry(i, j, k) {
@@ -630,7 +628,14 @@ function isError(arr, changedPos) {
     for(let i = x - 1; i <= x + 1; i++)
       for(let j = y - 1; j <= y + 1; j++)
         for(let k = z - 1; k <= z + 1; k++) { // действительно ли это так или можно это упростить
-          let actualK = (k + logicSize.z) % logicSize.z;
+          let actualK
+          if(zLoopBack) {
+            actualK = (k + logicSize.z) % logicSize.z
+          } else {
+            actualK = k
+            if(k === 0) continue
+          }
+          
           if( notInRange(i, j, actualK, logicSize.w, logicSize.h, logicSize.z) )
             continue;
           if(valueError(arr, i, j, actualK))
@@ -638,10 +643,10 @@ function isError(arr, changedPos) {
         }
     return false;
   }
-  // эта часть исправлена
+  let startK = zLoopBack ? 0 : 1
   for(let i = 0; i < logicSize.w; i++)
     for(let j = 0; j < logicSize.h; j++)
-      for(let k = 0; k < logicSize.z; k++)
+      for(let k = startK; k < logicSize.z; k++)
         if(valueError(arr, i, j, k))
           return true;
   return false;
@@ -833,7 +838,14 @@ function errorInCell(arr, x, y, z) {
   let prevCell = arr[x][y][k];
   if(mainCell == 2)
     return false;
-      
+     
+  // TEST STUFF
+  if(zLoopBack === false) {
+    if(z === 0) {
+      throw `z === ${z} AND zLoopBack === false`
+    }
+  }
+
   for(let i = x - 1; i <= x + 1; i++)
     for(let j = y - 1; j <= y + 1; j++) {
       if(i == x && j == y) continue;
@@ -907,9 +919,10 @@ function init3DArray(xSize, ySize, zSize, value) {
 function detectErrors(arr) {
   errors = [];
   let result = false;
+  let startK = zLoopBack ? 0 : 1
   for(let i = 0; i < logicSize.w; i++)
     for(let j = 0; j < logicSize.h; j++)
-      for(let k = 0; k < logicSize.z; k++) {
+      for(let k = startK; k < logicSize.z; k++) {
         result = valueError(arr, i, j, k, true) || result;
       }
   return result;
