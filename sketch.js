@@ -24,7 +24,7 @@ let defaultStowage = []
 let errors = [];
 let solves = [];
 
-let BG_COLOR =     [150, 150, 150] // [100, 100, 100]
+let BG_COLOR =     [125, 125, 125] // [100, 100, 100]
 let GRID_COLOR =   [ 60,  60,  60] // [0, 0, 0]
 let POINTS_COLOR = [255,   0, 255]
 let ZERO_COLOR =   [  0,   0,   0] // [255, 255, 255]
@@ -380,6 +380,7 @@ function initialization(_zeroBorders = false) {
 
 function setup() {
   createCanvas(0, 0)
+  offset.x = windowWidth / 2 + 200
   noLoop();
   textFont("consolas", 20);
   initialization(zeroBorders)
