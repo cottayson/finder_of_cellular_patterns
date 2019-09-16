@@ -46,10 +46,12 @@ let n = 0, maxPreSolveIterations = 0,
 let listOfSymbols = [' ', 'o', '*', 'E']
 let lengthOfLogicSet = 2;
 let defaultPavement = 0; // lengthOfLogicSet <=> *
-let maxPrint = 5000
-let randomFilter = 0.01
+let maxPrint = 100
+let randomFilterDefaultValue = 1
+let randomDampingCoefficient = 1
 let maxStowage = 0
 let maxBranches = 150000
+let maxSolutions = Infinity
 let debugStep = 50000
 let preSolveEnable = true
 let errorUpgrade = true
@@ -267,13 +269,14 @@ function globalSolve() {
   n = 0; maxPreSolveIterations = 0;
   maxSetOfChangesLength = 0;
   solutionsCount = 0
+  randomFilterCurrentValue = randomFilterDefaultValue
   // global variables
   console.log("solutions: ")
   let sip = 0, changedPos = null
   console.time('solve time')
   solve(arr, sip, changedPos)
   console.timeEnd('solve time')
-  const foundedAllSolutions = n < maxBranches
+  const foundedAllSolutions = isFoundedAllSolutions()
   if(unionAutoEnable) {
     applyUnion()
   } else {
@@ -282,14 +285,19 @@ function globalSolve() {
   }
   // no recursion
   if(foundedAllSolutions)
-    console.log("all " + solutionsCount /*solves.length*/ + " solutions found.");
+    console.log(`all ${solutionsCount} solutions found.`)
   else
-    console.log("solutions = " + solutionsCount /*solves.length*/);
-  console.log("branches = " + n);
+    console.log(`NOT ALL ${solutionsCount} solutions found.`)
+  console.log(`maxSolutions = ${maxSolutions}`)
+  console.log(`branches = ${n}`)
   if(preSolveEnable) {
-    console.log("maxPreSolveIterations = " + maxPreSolveIterations);
-    console.log("maxSetOfChangesLength = " + maxSetOfChangesLength);
+    console.log(`maxPreSolveIterations = ${maxPreSolveIterations}`)
+    console.log(`maxSetOfChangesLength = ${maxSetOfChangesLength}`)
   }
+}
+
+function isFoundedAllSolutions() {
+  return n < maxBranches && solutionsCount < maxSolutions
 }
 
 //**********************************************************************************
@@ -304,7 +312,7 @@ function unionTo(solution, unionArray) {
 }
 
 function applyUnion() {
-  const foundedAllSolutions = n < maxBranches
+  const foundedAllSolutions = isFoundedAllSolutions()
   // print3dSolve(unionArray)
   if(solutionsCount > 0 && foundedAllSolutions) {
     logic = copy3dArray(globalUnionArray)
@@ -422,7 +430,7 @@ function keyPressed() {
     if(applyUnion()) {
       console.log('union applied')
     } else {
-      console.log('not all solutions found or solutionsCount = 0')
+      console.warn('not all solutions found or solutionsCount = 0 or maxSolutions')
     }
   }
   if(keyCode == 187) { // "="
@@ -681,26 +689,28 @@ function valueError(arr, i, j, k, detect) {
   return false;
 }
  // исправлено
-function isRandomFiltering() {
-  if(randomFilter < 1) {
-    return Math.random() < randomFilter
+function isRandomFiltering(solutionsCount) {
+  randomFilterCurrentValue *= randomDampingCoefficient
+  if(randomFilterCurrentValue < 1) {
+    // console.log('randomFilterCurrentValue: ', randomFilterCurrentValue)
+    return Math.random() < randomFilterCurrentValue
   } else {
     return true
   }
 }
 
 function solve(arr, sip, changedPos, setOfChanges = []) {
-  if(n >= maxBranches) {
+  if(n >= maxBranches || solutionsCount >= maxSolutions) {
     return;
   }
   n++;
-  if(n % debugStep == 0) {
+  if(n % debugStep === 0) {
   console.log(`{${n}}`)
   }
   if(setOfChanges.length > 0) {
     throw new Error('такого не бывает')
   }
-  if(errorUpgrade == false) {
+  if(errorUpgrade === false) {
     changedPos = null;
   }
   // detect errors for cut one branch
@@ -716,7 +726,7 @@ function solve(arr, sip, changedPos, setOfChanges = []) {
     // let temp = copy3dArray(arr)
     // some manipulations for presolve
     let pre = preSolveError(temp, setOfChanges)
-    while(pre == 2) { // some changes detected
+    while(pre === 2) { // some changes detected
       pre = preSolveError(temp, setOfChanges)
       iterations++
     }
@@ -727,7 +737,7 @@ function solve(arr, sip, changedPos, setOfChanges = []) {
       maxSetOfChangesLength = setOfChanges.length
     }
     
-    if(pre == 1) { // error detected
+    if(pre === 1) { // error detected
       return;
     }
     // in this line pre always equal zero
@@ -739,7 +749,7 @@ function solve(arr, sip, changedPos, setOfChanges = []) {
     unionTo(arr, globalUnionArray)
     solutionsCount++
     
-    if(solutionsCount <= maxPrint && isRandomFiltering()) {
+    if(solutionsCount <= maxPrint && isRandomFiltering(solutionsCount)) {
       print3dSolve(arr, solutionsCount)
     }
     return;
