@@ -46,7 +46,7 @@ let n = 0, maxPreSolveIterations = 0,
 let listOfSymbols = [' ', 'o', '*', 'E']
 let lengthOfLogicSet = 2;
 let defaultPavement = 0; // lengthOfLogicSet <=> *
-let maxPrint = 100
+let maxPrint = 10
 let randomFilterDefaultValue = 1
 let randomDampingCoefficient = 1
 let maxStowage = 0
@@ -281,7 +281,7 @@ function globalSolve() {
     applyUnion()
   } else {
     console.log('union: ')
-    print3dSolve(globalUnionArray /*union(solves)*/)
+    print3dSolve(globalUnionArray, undefined, true)
   }
   // no recursion
   if(foundedAllSolutions)
@@ -298,6 +298,35 @@ function globalSolve() {
 
 function isFoundedAllSolutions() {
   return n < maxBranches && solutionsCount < maxSolutions
+}
+
+function numberOfCellsToString(numberOfCells) {
+  if(numberOfCells === undefined) {
+    return "";
+  } else if(numberOfCells.min === numberOfCells.max) {
+    return `[${numberOfCells.min}]`;
+  } else {
+    return `[${numberOfCells.min}..${numberOfCells.max}]`;
+  }
+}
+
+function getNumberOfCells(arr) {
+  let min = 0;
+  let max = 0;
+  for(let i = 0; i < arr.length; i++)
+    for(let j = 0; j < arr[0].length; j++)
+      for(let k = 0; k < arr[0][0].length; k++) {
+        let cell = arr[i][j][k];
+        if(cell < 2) {
+          min += cell;
+          max += cell;
+        } else if (cell === 2) {
+          max += 1;
+        } else {
+          return undefined;
+        }
+      }
+  return {min, max};
 }
 
 //**********************************************************************************
@@ -346,6 +375,26 @@ function setZeroBorders() {
     for(let i = 0; i < logicSize.h; i++) {
       logic[0][i][k] = 0;
       logic[logicSize.w - 1][i][k] = 0;
+    }
+  }
+}
+
+function shiftLogicInZ(dz) {
+  if(dz > 0) {
+    for(let i = 0; i < logicSize.w; i++) {
+      for(let j = 0; j < logicSize.h; j++) {
+        for(let k = logicSize.z - 1 - dz; k >= 0; k--) {
+          logic[i][j][k + dz] = logic[i][j][k]
+        }
+      }
+    }
+  } else if(dz < 0) {
+    for(let i = 0; i < logicSize.w; i++) {
+      for(let j = 0; j < logicSize.h; j++) {
+        for(let k = 0; k <= logicSize.z - 1 - (-dz); k++) {
+          logic[i][j][k] = logic[i][j][k + (-dz)]
+        }
+      }
     }
   }
 }
@@ -750,7 +799,7 @@ function solve(arr, sip, changedPos, setOfChanges = []) {
     solutionsCount++
     
     if(solutionsCount <= maxPrint && isRandomFiltering(solutionsCount)) {
-      print3dSolve(arr, solutionsCount)
+      print3dSolve(arr, solutionsCount, true)
     }
     return;
   }
@@ -794,9 +843,7 @@ function solve(arr, sip, changedPos, setOfChanges = []) {
 }
  // исправлено
 function printSolve(arr, n) {
-  let str = "";
-  if(n != undefined)
-    str += n + ")\n";
+  let str = getStatsString(arr, n, showNumberOfCells);
   for(let i = 0; i < logicSize.h; i++) {
     for(let j = 0; j < logicSize.w; j++) {
       str += getSymbol(arr[j][i]) + " ";
@@ -806,10 +853,23 @@ function printSolve(arr, n) {
   console.log(str);
 }
 
-function print3dSolve(arr, n) {
+function getStatsString(arr, n, showNumberOfCells = false) {
   let str = "";
-  if(n != undefined)
-    str += n + ")\n";
+  if(n !== undefined) {
+    str += `${n}) `;
+  }
+  let stringNumberCells = numberOfCellsToString(getNumberOfCells(arr))
+  if(showNumberOfCells) {
+    str += `${stringNumberCells}`;
+  }
+  if(n !== undefined || stringNumberCells.length > 0) {
+    str += '\n';
+  }
+  return str;
+}
+
+function print3dSolve(arr, n, showNumberOfCells = false) {
+  let str = getStatsString(arr, n, showNumberOfCells);
   for(let k = 0; k < logicSize.z; k++) {
     str += " *** t = " + (k+1) + " *** \n";
     for(let i = 0; i < logicSize.h; i++) {
